@@ -14,6 +14,7 @@ namespace RestaurantSystem
         "[3] Keisti staliukų rezervacijas",
         "Įveskite staliuko numerį:",
         "Įveskite svečių kiekį:",
+        "[1]Spasdinti kvita"
         };
 
         public UI()
@@ -49,22 +50,7 @@ namespace RestaurantSystem
             mainRepo = new RestaurantRepository("repo.txt");
             if (!mainRepo.Items.Any())
             {
-                mainRepo.Add(new Restaurant
-                {
-                    Tables = new Table[]
-                    {
-            new Table(5) {
-                IsTaken = false
-            },
-            new Table(6) {
-                IsTaken = false
-            },
-            new Table(2) {
-                IsTaken = false
-            }
-                    }
-                }
-                );
+                mainRepo.Add(new Restaurant(20));
             }
 
             res = mainRepo.Items.First();
@@ -95,7 +81,6 @@ namespace RestaurantSystem
         //spausdinamas visada ir taip pat čekio skirto restoranui informacija įrašoma į failą.
         public void Start()
         {
-
             while (true)
             {
                 Console.WriteLine(lines[0]);
@@ -104,10 +89,10 @@ namespace RestaurantSystem
                 switch (GetChoice())
                 {
                     case 1:
-                        PickTable();
+                        OpenTable();
                         break;
-                    case 2: 
-
+                    case 2:
+                        CloseTable();
                         break;
                     case 99:
                         mainRepo.Update(res);
@@ -117,9 +102,9 @@ namespace RestaurantSystem
             }
         }
 
-        private void PickTable()
+        private void OpenTable()
         {
-            var tables = res.Tables.OrderByDescending(x => x.IsTaken).ToList();
+            var tables = res.Tables.Where(x => !x.IsTaken).ToList();
 
             var table = GetChoiceFromDynamicList(tables, (i, t) => { return $"Table [{i}] ({(t.IsTaken ? "Taken" : "Empty")})"; });
             if (table != null)
@@ -129,18 +114,43 @@ namespace RestaurantSystem
 
         }
 
+        private void CloseTable()
+        {
+            var tables = res.Tables.Where(x => x.IsTaken).ToList();
+
+            var table = GetChoiceFromDynamicList(tables, (i, t) => { return $"Table [{i}] ({(t.IsTaken ? "Taken" : "Empty")})"; });
+
+            Console.WriteLine("0 - Back");
+            Console.WriteLine("1 - spausdinti kvita");
+            Console.WriteLine("2 - sumoketa");
+
+            switch (GetChoice())
+            {
+                case 1:
+                    string cartId = table.CurrentCartId;
+                    Console.WriteLine($"checkis {mainRepo.CountTotalByCartId(cartId)}");
+                    break;
+                case 2:
+                    CloseTable();
+                    break;
+                case 0:
+                    break;
+            }
+
+
+        }
         private void ManageOrder(Table table)
         {
             Cart? order = null;
             if (table.IsTaken)
             {
-                order = res.Carts.FirstOrDefault(x => x.Id == table.CurrentOrderId);
+                order = res.Carts.FirstOrDefault(x => x.Id == table.CurrentCartId);
             }
-            if(order == null)
+            if (order == null)
             {
                 table.IsTaken = true;
                 order = new Cart();
-                table.CurrentOrderId = order.Id;
+                table.CurrentCartId = order.Id;
                 order.TableId = table.Id;
                 res.Carts.Add(order);
             }

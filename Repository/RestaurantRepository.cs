@@ -7,5 +7,15 @@ namespace RestaurantSystem.Repository
         public RestaurantRepository(string path) : base(path)
         {
         }
+
+        public double CountTotalByCartId(string id)
+        {
+            var items =  Items.First().Carts.Where(x => x.Id == id);
+
+
+            
+
+            return items.Count();
+        }
     }
 }
