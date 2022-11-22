@@ -1,18 +1,20 @@
-﻿namespace RestaurantSystem.Entity
+﻿using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace RestaurantSystem.Entity
 {
-    public class Table
+    public class Table : BaseIdModel
     {
-        public int Id { get; set; }
         public int GuestsNum { get; set; }
-        public int CartId { get; set; }
+        public bool IsTaken { get; set; } = false;
+        [JsonIgnore(Condition = JsonIgnoreCondition.Always)]
+        public string? CurrentOrderId { get; set; }
 
-        Table() { }
+        public Table() { }
 
-        Table(int id, int guestsNum, int cartId)
+        public Table(int guestsNum)
         {
-            Id = id;
             GuestsNum = guestsNum;
-            CartId = cartId;
         }
     }
 }

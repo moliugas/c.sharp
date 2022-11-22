@@ -8,7 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Repository\" />
+    <Compile Remove="Entity\CartItems.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Entity\BaseIdModel" />
+    <None Remove="Entity\NewFile1.txt" />
+    <None Remove="Repository\NewFile1.txt" />
   </ItemGroup>
 
 </Project>

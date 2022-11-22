@@ -1,11 +1,10 @@
 ﻿namespace RestaurantSystem.Entity
 {
-    public class Cart
+    public class Cart : BaseIdModel
     {
-        public int Id { get; set; }
-        public int TableId { get; set; }
+        public string TableId { get; set; }
 
-        private List<CartItems> Items { get; set; }
+        public List<CartItem> Items { get; } = new();
 
     }
 }
