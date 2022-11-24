@@ -4,7 +4,7 @@ namespace RestaurantSystem.Entity
 {
     public class Restaurant : BaseIdModel
     {
-        string? Name { get; set; }
+        public string? Name { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.Always)]
         public List<MenuItem>? Drinks { get; set; }

@@ -8,6 +8,9 @@ namespace RestaurantSystem
         private RestaurantRepository restaurantRepository;
         private ReceiptRepository receiptRepository;
         private Restaurant restaurant;
+        private double FoodTax;
+        private double DrinkTax;
+
 
         public UI()
         {
@@ -45,31 +48,32 @@ namespace RestaurantSystem
                 restaurantRepository.Add(new Restaurant(20));
             }
 
+            receiptRepository = new ReceiptRepository("receipt.txt");
 
             restaurant = restaurantRepository.Items.First();
             restaurant.Drinks = drinksRepo.Items;
             restaurant.Foods = foodRepo.Items;
+
+            FoodTax = 5;
+            DrinkTax = 21;
         }
 
         public void Start()
         {
             while (true)
             {
-                Console.WriteLine("[1]Create/Edit Table");
-                Console.WriteLine("[2]Close Table");
-                Console.WriteLine("[3]Manage Orders");
-                Console.WriteLine("[99]Quit");
+                Console.WriteLine("[1] Manage Tables");
+                Console.WriteLine("[2] Manage Orders");
+                Console.WriteLine("[3]List Receipts");
+                Console.WriteLine("[99]Save & Quit");
 
                 switch (GetChoice())
                 {
                     case 1:
-                        EditTable();
+                        ManageTables();
                         break;
                     case 2:
-                        CloseTable();
-                        break;
-                    case 3:
-                        OrdersList();
+                        ManageOrders();
                         break;
                     case 99:
                         restaurantRepository.Update(restaurant);
@@ -79,49 +83,148 @@ namespace RestaurantSystem
             }
         }
 
-        private void OrdersList()
+
+        private void ManageTables()
         {
-            List<Order> orders = restaurant.Orders.Where(x => x.Active).ToList();
+            List<Table> tables = restaurant.Tables.ToList();
 
-            if (orders.Count == 0)
+            Table? table = GetGenericObjectFromDynamicList(tables, (i, t) => { return $"Table [{i}] ({(t.IsTaken ? "Taken" : "Empty")})"; });
+            if (table == null)
             {
-                Console.WriteLine("No active orders found.");
+                Console.WriteLine("Table not chosen.");
                 return;
             }
+            InitTable(table);
 
-            Order? order = GetChoiceFromDynamicList(orders, (i, t) => { return $"Order [{i}] current sum: {restaurantRepository.GetTotalSumByOrderId(t.Id)}"; });
+            Order currentOrder = restaurant.Orders.Single(x => x.Id == table.CurrentOrderId);
 
-            if (order == null)
-            {
-                Console.WriteLine("Order not chosen.");
-                return;
-            }
-
-            Console.WriteLine("[1]Edit order");
-            Console.WriteLine("[2]Delete order");
-            Console.WriteLine("[0]Back");
+            Console.WriteLine("[1] Add Items To Order");
+            Console.WriteLine("[2] Close Table");
+            Console.WriteLine("[3]Checkout");
+            Console.WriteLine("[0] Back");
 
             switch (GetChoice())
             {
                 case 1:
-                    ManageOrder(order.Id);
+                    AddItemsToOrder(currentOrder);
                     break;
                 case 2:
-                    Table table = restaurant.Tables.Single(x => x.CurrentOrderId == order.Id);
                     table.CurrentOrderId = null;
-                    restaurantRepository.DeleteOrderByOrder(order);
+                    table.IsTaken = false;
+                    table.GuestsNum = 0;
+                    break;
+                case 3:
+                    Checkout(currentOrder);
+                    break;
+                case 0:
+                    break;
+            }
+
+        }
+
+        private void Checkout(Order order)
+        {
+            Console.WriteLine("[0] Back");
+            Console.WriteLine("[1] Print receipt");
+            Console.WriteLine("[2] Confirm payment");
+
+            switch (GetChoice())
+            {
+                case 1:
+                   
+                    if (order == null)
+                    {
+                        Console.WriteLine("This has no active order.");
+                        return;
+                    }
+                    Console.WriteLine($"Total Food: {restaurantRepository.GetFoodTotalSumByOrder(order)}");
+                    Console.WriteLine($"Total Drinks: {restaurantRepository.GetDrinksTotalSumByOrder(order)}");
+                    break;
+                case 2:
+                    Console.WriteLine("[2] Confirm payment");
                     break;
                 case 0:
                     break;
             }
         }
 
-        private void EditTable()
+        private void GenerateReceipt(Order order)
         {
-            List<Table> tables = restaurant.Tables.ToList();
+            List<ReceiptItem> receiptItems = new ();
+            double sum = 0;
 
-            Table? table = GetChoiceFromDynamicList(tables, (i, t) => { return $"Table [{i}] ({(t.IsTaken ? "Taken" : "Empty")})"; });
+            foreach(var item in order.Items)
+            {
+                double itemPrice = restaurantRepository.GetItemPriceById(item.Id);
+                receiptItems.Add(new(restaurantRepository.GetMenuItemName(item), item.Amount, itemPrice, item.Id));
+                sum += item.Amount * itemPrice;
+            }
 
+            Receipt receipt = new(receiptItems, FoodTax, DrinkTax, restaurant.Id, restaurant.Name ?? "");
+
+            receiptRepository.Add(receipt);
+        }
+
+        private void ManageOrders()
+        {
+            List<Order> orders = restaurant.Orders.ToList();
+
+            Order? order = GetGenericObjectFromDynamicList(orders, (i, t) => { return $"Order [{i}] current sum: {restaurantRepository.GetTotalSumByOrderId(t.Id)}"; });
+
+            if (order == null)
+            {
+                Console.WriteLine("Order not chosen.");
+                return;
+            }
+            Console.WriteLine("[1] Edit order");
+            Console.WriteLine("[2] Delete order");
+            Console.WriteLine("[0] Back");
+
+            switch (GetChoice())
+            {
+
+                case 1:
+                    EditOrder(order);
+                    break;
+                case 2:
+                    Table table = restaurant.Tables.Single(x => x.CurrentOrderId == order.Id);
+                    table.CurrentOrderId = null;
+                    restaurant.Orders.Remove(order);
+                    break;
+                case 0:
+                    break;
+            }
+        }
+
+        private static void EditOrder(Order order)
+        {
+            OrderItem? item = GetGenericObjectFromDynamicList(order.Items, (i, t) => { return $"Item [{i}] {t.Name} x {t.Amount}"; });
+
+            if (item == null)
+            {
+                Console.WriteLine("Item not chosen.");
+                return;
+            }
+            Console.WriteLine("[1] Edit Item amount");
+            Console.WriteLine("[2] Delete Item");
+            Console.WriteLine("[0] Back");
+
+            switch (GetChoice())
+            {
+                case 1:
+                    item.Amount = GetChoice();
+                    break;
+                case 2:
+                    order.Items.Remove(item);
+                    break;
+                case 0:
+                    break;
+            }
+
+        }
+
+        private void InitTable(Table table)
+        {
             Order? order = null;
 
             if (table != null)
@@ -144,64 +247,13 @@ namespace RestaurantSystem
 
                 if (table.CurrentOrderId == null)
                 {
-                    Console.WriteLine("Failed to create order.");
+                    Console.WriteLine("Failed to initialize order.");
                     return;
                 }
-
-                ManageOrder(table.CurrentOrderId);
             }
-
-            Console.WriteLine("Table init unsuccessfull :(");
         }
-
-        private void CloseTable()
+        private void AddItemsToOrder(Order order)
         {
-            List<Table> tables = restaurant.Tables.Where(x => x.IsTaken).ToList();
-
-            if (tables.Count == 0)
-            {
-                Console.WriteLine("No active tables found.");
-                return;
-            }
-
-            if (tables.Count == 0) return;
-
-            Table? table = GetChoiceFromDynamicList(tables, (i, t) => { return $"Table [{i}] ({(t.IsTaken ? "Taken" : "Empty")})"; });
-
-            if (table == null)
-            {
-                Console.WriteLine("Table not found.");
-                return;
-            }
-
-            Console.WriteLine("0 - Back");
-            Console.WriteLine("1 - print receipt");
-            Console.WriteLine("2 - confirm payment");
-
-            switch (GetChoice())
-            {
-                case 1:
-                    string? orderId = table.CurrentOrderId;
-                    if (orderId == null)
-                    {
-                        Console.WriteLine("This has no active order.");
-                        return;
-                    }
-                    Console.WriteLine($"Total Food: {restaurantRepository.GetFoodTotalSumByOrderId(orderId)}");
-                    Console.WriteLine($"Total Drinks: {restaurantRepository.GetDrinksTotalSumByOrderId(orderId)}");
-                    break;
-                case 2:
-                    Console.WriteLine("2 - confirm payment");
-                    break;
-                case 0:
-                    break;
-            }
-
-
-        }
-        private void ManageOrder(string id)
-        {
-            Order? order = restaurant.Orders.SingleOrDefault(x => x.Id == id);
 
             if (order == null)
             {
@@ -212,10 +264,13 @@ namespace RestaurantSystem
             bool repeat = true;
             while (order != null && repeat)
             {
-                Console.WriteLine("0 - Back");
-                Console.WriteLine("1 - Food");
-                Console.WriteLine("2 - Drinks");
+
+                Console.WriteLine("[0] Back");
+                Console.WriteLine("Choose what to add:");
+                Console.WriteLine("[1] Food");
+                Console.WriteLine("[2] Drinks");
                 MenuItem? item = null;
+                bool isDrink = false;
                 switch (GetChoice())
                 {
                     case 0:
@@ -226,24 +281,24 @@ namespace RestaurantSystem
                         break;
                     case 2:
                         item = GetChoiceFromDynamicList(restaurant.Drinks ?? new(), (i, f) => $"[{i}] {f.Name} - {f.Price}");
+                        isDrink = true;
                         break;
                 }
                 if (item != null)
                 {
-                    OrderItem? currentItem = order.Items.FirstOrDefault(x => x.ItemId == item.Id);
+                    OrderItem? currentItem = order.Items.FirstOrDefault(x => x.MenuItemId == item.Id);
                     if (currentItem == null)
                     {
-                        currentItem = new OrderItem() { OrderId = order.Id, ItemAmount = 0, ItemId = item.Id };
+                        currentItem = new OrderItem() { OrderId = order.Id, Amount = 0, MenuItemId = item.Id, isDrink = isDrink };
                         order.Items.Add(currentItem);
                     }
-                    currentItem.ItemAmount++;
+                    currentItem.Amount++;
                 }
             }
 
         }
 
-        private static T? GetChoiceFromDynamicList<T>(List<T> list, Func<int, T, string> print)
-            where T : class
+        private static T? GetChoiceFromDynamicList<T>(List<T> list, Func<int, T, string> print) where T : class
         {
             Console.WriteLine("Back 0");
 
@@ -267,11 +322,22 @@ namespace RestaurantSystem
         {
             int choise;
 
-            while (!int.TryParse(Console.ReadLine(), out choise));
+            while (!int.TryParse(Console.ReadLine(), out choise)) ;
 
             return choise;
         }
-    }
 
+        private static T? GetGenericObjectFromDynamicList<T>(List<T> items, Func<int, T, string> print) where T : class
+        {
+            if (items.Count == 0)
+            {
+                Console.WriteLine($"No {typeof(T)} found in system.");
+                return default;
+            }
+
+            return GetChoiceFromDynamicList(items, print);
+
+        }
+    }
 
 }

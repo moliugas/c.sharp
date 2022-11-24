@@ -20,7 +20,6 @@ public class Repository<T>
             {
                 // Ignore, 'cause if file empty - it's thrown
 
-                Console.WriteLine("File is empty.");
             }
             if (items != null)
             {

@@ -3,7 +3,10 @@
     public class OrderItem : BaseIdModel
     {
         public string OrderId { get; set; }
-        public string ItemId { get; set; }
-        public int ItemAmount { get; set; }
+        public string MenuItemId { get; set; }
+
+        public bool isDrink { get; set; }
+        public string Name { get; set; }
+        public double Amount { get; set; }
     }
 }
