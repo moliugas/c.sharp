@@ -1,10 +1,9 @@
 ﻿namespace RestaurantSystem.Entity
 {
-    public class CartItem : BaseIdModel
+    public class OrderItem : BaseIdModel
     {
-        public string CartId { get; set; }
+        public string OrderId { get; set; }
         public string ItemId { get; set; }
         public int ItemAmount { get; set; }
-
     }
 }

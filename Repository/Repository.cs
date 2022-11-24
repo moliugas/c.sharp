@@ -65,11 +65,9 @@ public class Repository<T>
 
     private void Store()
     {
-        using (var stream = File.Open(FilePath, FileMode.Create, FileAccess.Write))
-        {
-            JsonSerializer.Serialize<List<T>>(stream, Items);
-            stream.Flush();
-        }
+        using var stream = File.Open(FilePath, FileMode.Create, FileAccess.Write);
+        JsonSerializer.Serialize<List<T>>(stream, Items);
+        stream.Flush();
     }
 
 }

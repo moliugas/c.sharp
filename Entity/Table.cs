@@ -6,14 +6,10 @@ namespace RestaurantSystem.Entity
     {
         public int GuestsNum { get; set; } = 0;
         public bool IsTaken { get; set; } = false;
-        [JsonIgnore(Condition = JsonIgnoreCondition.Always)]
-        public string? CurrentCartId { get; set; }
+        public string? CurrentOrderId { get; set; }
+        public int Number { get; set; }
 
-        public Table() { }
+        public Table(int num) { Number = num; }
 
-        public Table(int guestsNum)
-        {
-            GuestsNum = guestsNum;
-        }
     }
 }
