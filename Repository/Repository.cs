@@ -6,6 +6,10 @@ public class Repository<T>
     public List<T> Items { get; private set; } = new List<T>();
     public string FilePath { get; }
 
+    public Repository()
+    {
+    }
+
     public Repository(string filePath)
     {
         FilePath = filePath;

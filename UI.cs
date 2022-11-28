@@ -1,6 +1,5 @@
 ﻿using RestaurantSystem.Repository;
 using RestaurantSystem.Entity;
-using System.Security.Cryptography.X509Certificates;
 
 namespace RestaurantSystem
 {
@@ -184,7 +183,7 @@ namespace RestaurantSystem
         {
             Console.Clear();
             Console.WriteLine("Receipt");
-            Console.WriteLine("Items        Qty     Price       Tax");
+            Console.WriteLine("Items        Qty     Price");
             foreach(var item in receipt.Items)
             {
                 Console.WriteLine($"{item.Name} {item.Amount}   {item.Price}  {item.Price* FoodTax}");
