@@ -11,5 +11,6 @@ namespace RestaurantSystem.Entity
 
         public Table(int num) { Number = num; }
 
+        public Table() { }
     }
 }

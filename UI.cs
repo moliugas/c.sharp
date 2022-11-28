@@ -1,5 +1,6 @@
 ﻿using RestaurantSystem.Repository;
 using RestaurantSystem.Entity;
+using System.Security.Cryptography.X509Certificates;
 
 namespace RestaurantSystem
 {
@@ -56,6 +57,8 @@ namespace RestaurantSystem
 
             FoodTax = 5;
             DrinkTax = 21;
+
+
         }
 
         public void Start()
@@ -64,8 +67,8 @@ namespace RestaurantSystem
             {
                 Console.WriteLine("[1] Manage Tables");
                 Console.WriteLine("[2] Manage Orders");
-                Console.WriteLine("[3]List Receipts");
-                Console.WriteLine("[99]Save & Quit");
+                Console.WriteLine("[3] List Receipts");
+                Console.WriteLine("[99] Save & Quit");
 
                 switch (GetChoice())
                 {
@@ -75,6 +78,9 @@ namespace RestaurantSystem
                     case 2:
                         ManageOrders();
                         break;
+                    case 3:
+                        ManageReceipts();
+                        break;
                     case 99:
                         restaurantRepository.Update(restaurant);
                         Environment.Exit(0);
@@ -83,6 +89,17 @@ namespace RestaurantSystem
             }
         }
 
+        private void ManageReceipts()
+        {
+            List<Receipt> receipts = receiptRepository.Items;
+
+            Receipt? receipt = GetGenericObjectFromDynamicList(receipts, (i, t) => { return $"Receipt [{i}] created on: ({t.CreatedOn}) sum: {t.TotalSum}"; });
+            if (receipts == null)
+            {
+                Console.WriteLine("Receipt not chosen.");
+                return;
+            }
+        }
 
         private void ManageTables()
         {
@@ -100,7 +117,7 @@ namespace RestaurantSystem
 
             Console.WriteLine("[1] Add Items To Order");
             Console.WriteLine("[2] Close Table");
-            Console.WriteLine("[3]Checkout");
+            Console.WriteLine("[3] Checkout");
             Console.WriteLine("[0] Back");
 
             switch (GetChoice())
@@ -109,6 +126,7 @@ namespace RestaurantSystem
                     AddItemsToOrder(currentOrder);
                     break;
                 case 2:
+                    restaurant.Orders.Single(x => x.Id == table.CurrentOrderId).Status = "canceled";
                     table.CurrentOrderId = null;
                     table.IsTaken = false;
                     table.GuestsNum = 0;
@@ -124,52 +142,91 @@ namespace RestaurantSystem
 
         private void Checkout(Order order)
         {
+            if (order.Items.Count == 0)
+            {
+                Console.WriteLine("This order has no items.");
+                return;
+            }
+            try
+            {
+                Console.WriteLine($"Food: {restaurantRepository.GetFoodTotalSumByOrder(order)}");
+                Console.WriteLine($"Drinks: {restaurantRepository.GetDrinksTotalSumByOrder(order)}");
+                Console.WriteLine($"Total: {restaurantRepository.GetTotalSumByOrder(order)}");
+            }
+            catch (Exception ex) { }
+
+            Console.WriteLine();
             Console.WriteLine("[0] Back");
             Console.WriteLine("[1] Print receipt");
-            Console.WriteLine("[2] Confirm payment");
 
             switch (GetChoice())
             {
                 case 1:
-                   
-                    if (order == null)
+                    var receipt = GenerateReceipt(order);
+
+                    string body = HTMLGenerator.GenerateReceiptHTML(receipt);
+
+                    Email.Send("audriustaciokas@gmail.com", "Receipt" ,body);
+
+                    Console.WriteLine("Print client's receipt?");
+                    if (Console.ReadLine() is "y" or "Y") 
                     {
-                        Console.WriteLine("This has no active order.");
-                        return;
+                        Print(receipt);
                     }
-                    Console.WriteLine($"Total Food: {restaurantRepository.GetFoodTotalSumByOrder(order)}");
-                    Console.WriteLine($"Total Drinks: {restaurantRepository.GetDrinksTotalSumByOrder(order)}");
-                    break;
-                case 2:
-                    Console.WriteLine("[2] Confirm payment");
+
                     break;
                 case 0:
                     break;
             }
         }
 
-        private void GenerateReceipt(Order order)
+        private void Print(Receipt receipt)
         {
-            List<ReceiptItem> receiptItems = new ();
-            double sum = 0;
-
-            foreach(var item in order.Items)
+            Console.Clear();
+            Console.WriteLine("Receipt");
+            Console.WriteLine("Items        Qty     Price       Tax");
+            foreach(var item in receipt.Items)
             {
-                double itemPrice = restaurantRepository.GetItemPriceById(item.Id);
-                receiptItems.Add(new(restaurantRepository.GetMenuItemName(item), item.Amount, itemPrice, item.Id));
-                sum += item.Amount * itemPrice;
+                Console.WriteLine($"{item.Name} {item.Amount}   {item.Price}  {item.Price* FoodTax}");
             }
 
-            Receipt receipt = new(receiptItems, FoodTax, DrinkTax, restaurant.Id, restaurant.Name ?? "");
+            Console.WriteLine($"Total: {receipt.TotalSum}");
+        }
+
+        private Receipt GenerateReceipt(Order order)
+        {
+            List<ReceiptItem> receiptItems = new();
+            double foodsSum = 0;
+            double drinksSum = 0;
+
+            foreach (var item in order.Items)
+            {
+                if (item.isDrink)
+                {
+                    double itemPrice = restaurantRepository.GetDrinkPriceById(item.MenuItemId);
+                    receiptItems.Add(new(restaurantRepository.GetGenericMenuItemById(item.MenuItemId), item.Amount, itemPrice, item.Id));
+                    drinksSum += item.Amount * itemPrice;
+                }
+                else
+                {
+                    double itemPrice = restaurantRepository.GetFoodPriceById(item.MenuItemId);
+                    receiptItems.Add(new(restaurantRepository.GetGenericMenuItemById(item.MenuItemId), item.Amount, itemPrice, item.Id));
+                    foodsSum += item.Amount * itemPrice;
+                }
+            }
+
+            Receipt receipt = new(receiptItems, drinksSum, foodsSum, FoodTax, DrinkTax, restaurant.Id, restaurant.Name ?? "");
 
             receiptRepository.Add(receipt);
+
+            return receipt;
         }
 
         private void ManageOrders()
         {
             List<Order> orders = restaurant.Orders.ToList();
 
-            Order? order = GetGenericObjectFromDynamicList(orders, (i, t) => { return $"Order [{i}] current sum: {restaurantRepository.GetTotalSumByOrderId(t.Id)}"; });
+            Order? order = GetGenericObjectFromDynamicList(orders, (i, t) => { return $"Order [{i}] current sum: {restaurantRepository.GetDrinksTotalSumByOrder(t)} status: {t.Status}"; });
 
             if (order == null)
             {
@@ -178,6 +235,7 @@ namespace RestaurantSystem
             }
             Console.WriteLine("[1] Edit order");
             Console.WriteLine("[2] Delete order");
+            Console.WriteLine("[3] Checkout");
             Console.WriteLine("[0] Back");
 
             switch (GetChoice())
@@ -187,9 +245,13 @@ namespace RestaurantSystem
                     EditOrder(order);
                     break;
                 case 2:
-                    Table table = restaurant.Tables.Single(x => x.CurrentOrderId == order.Id);
-                    table.CurrentOrderId = null;
                     restaurant.Orders.Remove(order);
+                    Table? table = restaurant.Tables.SingleOrDefault(x => x.CurrentOrderId == order.Id);
+                    if (table == null) { break; }
+                    table.CurrentOrderId = null;
+                    break;
+                case 3:
+                    Checkout(order);
                     break;
                 case 0:
                     break;
@@ -239,9 +301,12 @@ namespace RestaurantSystem
                     Console.WriteLine("Enter number of guests");
                     table.GuestsNum = GetChoice();
                     table.IsTaken = true;
-                    order = new Order();
+                    order = new Order
+                    {
+                        RestaurantId = restaurant.Id,
+                        TableId = table.Id
+                    };
                     table.CurrentOrderId = order.Id;
-                    order.TableId = table.Id;
                     restaurant.Orders.Add(order);
                 }
 

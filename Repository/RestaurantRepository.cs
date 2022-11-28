@@ -1,5 +1,4 @@
 ﻿using RestaurantSystem.Entity;
-using System.Collections.Generic;
 
 namespace RestaurantSystem.Repository
 {
@@ -18,7 +17,7 @@ namespace RestaurantSystem.Repository
         {
             double totalSum = 0;
 
-            List<MenuItem>? drinks = Items.Single(x => x.Id = order.RestaurantId).Drinks;
+            List<MenuItem>? drinks = Items.First().Drinks;
 
             if (drinks == null) { return 999999; }
 
@@ -87,6 +86,20 @@ namespace RestaurantSystem.Repository
             }
 
             return (double)name;
+        }
+
+        public double GetFoodPriceById(string id)
+        {
+            Restaurant res = Items.First();
+
+            return res.Foods.SingleOrDefault(x => x.Id == id)?.Price ?? 0;
+        }
+
+        public double GetDrinkPriceById(string id)
+        {
+            Restaurant res = Items.First();
+
+            return res.Drinks.SingleOrDefault(x => x.Id == id)?.Price ?? 0;
         }
     }
 }
