@@ -3,11 +3,11 @@ using RestaurantSystem.Entity;
 
 namespace RestaurantSystem
 {
-    internal class UI
+    public class UI
     {
-        private RestaurantRepository restaurantRepository;
-        private ReceiptRepository receiptRepository;
-        private Restaurant restaurant;
+        public RestaurantRepository restaurantRepository;
+        public ReceiptRepository receiptRepository;
+        public Restaurant restaurant;
         private double FoodTax;
         private double DrinkTax;
 
@@ -17,7 +17,7 @@ namespace RestaurantSystem
             Initialize();
         }
 
-        private void Initialize()
+        public void Initialize()
         {
             //File.Delete("repo.txt");
             var drinksRepo = new Repository<MenuItem>("drinks.txt");
@@ -54,8 +54,7 @@ namespace RestaurantSystem
             restaurant.Drinks = drinksRepo.Items;
             restaurant.Foods = foodRepo.Items;
 
-            FoodTax = 5;
-            DrinkTax = 21;
+            FoodTax = 21;
 
 
         }
@@ -164,11 +163,12 @@ namespace RestaurantSystem
                     var receipt = GenerateReceipt(order);
 
                     string body = HTMLGenerator.GenerateReceiptHTML(receipt);
-
-                    Email.Send("audriustaciokas@gmail.com", "Receipt" ,body);
+                    Console.WriteLine("Enter email adress.");
+                  
+                    Email.Send(Console.ReadLine() ?? "haker@cepelinai.lt", "Receipt", body);
 
                     Console.WriteLine("Print client's receipt?");
-                    if (Console.ReadLine() is "y" or "Y") 
+                    if (Console.ReadLine() is "y" or "Y")
                     {
                         Print(receipt);
                     }
@@ -184,15 +184,15 @@ namespace RestaurantSystem
             Console.Clear();
             Console.WriteLine("Receipt");
             Console.WriteLine("Items        Qty     Price");
-            foreach(var item in receipt.Items)
+            foreach (var item in receipt.Items)
             {
-                Console.WriteLine($"{item.Name} {item.Amount}   {item.Price}  {item.Price* FoodTax}");
+                Console.WriteLine($"{item.Name} {item.Amount}   {item.Price}  {item.Price * FoodTax / 100}");
             }
 
             Console.WriteLine($"Total: {receipt.TotalSum}");
         }
 
-        private Receipt GenerateReceipt(Order order)
+        public Receipt GenerateReceipt(Order order)
         {
             List<ReceiptItem> receiptItems = new();
             double foodsSum = 0;
@@ -225,7 +225,7 @@ namespace RestaurantSystem
         {
             List<Order> orders = restaurant.Orders.ToList();
 
-            Order? order = GetGenericObjectFromDynamicList(orders, (i, t) => { return $"Order [{i}] current sum: {restaurantRepository.GetDrinksTotalSumByOrder(t)} status: {t.Status}"; });
+            Order? order = GetGenericObjectFromDynamicList(orders, (i, t) => { return $"Order [{i}] current sum: {restaurantRepository.GetTotalSumByOrder(t)} status: {t.Status}"; });
 
             if (order == null)
             {
@@ -244,10 +244,7 @@ namespace RestaurantSystem
                     EditOrder(order);
                     break;
                 case 2:
-                    restaurant.Orders.Remove(order);
-                    Table? table = restaurant.Tables.SingleOrDefault(x => x.CurrentOrderId == order.Id);
-                    if (table == null) { break; }
-                    table.CurrentOrderId = null;
+                    RemoveOrder(order);
                     break;
                 case 3:
                     Checkout(order);
@@ -257,6 +254,13 @@ namespace RestaurantSystem
             }
         }
 
+        public void RemoveOrder(Order order)
+        {
+            restaurant.Orders.Remove(order);
+            Table? table = restaurant.Tables.SingleOrDefault(x => x.CurrentOrderId == order.Id);
+            if (table == null) { return; }
+            table.CurrentOrderId = null;
+        }
         private static void EditOrder(Order order)
         {
             OrderItem? item = GetGenericObjectFromDynamicList(order.Items, (i, t) => { return $"Item [{i}] {t.Name} x {t.Amount}"; });
@@ -284,7 +288,7 @@ namespace RestaurantSystem
 
         }
 
-        private void InitTable(Table table)
+        public void InitTable(Table table)
         {
             Order? order = null;
 
